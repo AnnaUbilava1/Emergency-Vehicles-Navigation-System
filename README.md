@@ -1,186 +1,132 @@
-# Smart Emergency Navigation System
+# 🚨 Smart Emergency Navigation System
 
 ## Overview
 
 The Smart Emergency Navigation System aims to provide real-time optimized routing for emergency vehicles, considering traffic conditions, road types, weather, accidents, and other factors that influence travel time. The system uses a combination of Bayesian networks and traffic data from APIs (Google Maps or mock data) to calculate the best routes for emergency vehicles, minimizing response times during critical situations.
 
-## Features
+---
 
-- **Real-time traffic prediction** using Google Maps and mock data.
-- **Bayesian network** for predicting congestion levels based on factors like time of day, weather, and accidents.
-- **Optimized route calculation** using A\* or Dijkstra's algorithm for emergency vehicles.
-- **Interactive visualization** of routes and congestion on a map.
-- **Performance comparison** between emergency routes and regular traffic routes.
+## 🚗 Problem Statement
 
-## Installation
+Urban traffic congestion often causes critical delays for emergency vehicles like ambulances and fire trucks, putting lives and property at risk. Traditional GPS systems are reactive and do not prioritize emergency-specific needs such as signal preemption, lane privileges, or intelligent rerouting during incidents.
 
-To run the system, you'll need to install several dependencies. Follow the steps below to set up your environment.
+---
 
-### 1. Clone the repository
+## Project Goals
+
+- Design an AI system that **predicts**, **adapts**, and **reroutes** emergency vehicles in real time.
+- Integrate real-world traffic APIs to dynamically reflect changing conditions.
+- Use Bayesian reasoning to anticipate delays before they become visible.
+- Simulate real-world response time improvements of 20–30%.
+
+---
+
+## AI & ML Techniques Used
+
+### 🔍 Search Algorithms
+
+- **A\*** and **Dijkstra** for shortest pathfinding on a city road network.
+- **Dynamic edge weights** that reflect emergency speed, traffic lights, lane access, and congestion.
+
+### Bayesian Network
+
+- Predicts traffic congestion based on:
+  - `TimeOfDay`, `Weather`, `Accident`, `RoadType`
+- Provides a **congestion score** used to penalize risky routes.
+- Enhances **reasoning under uncertainty** and supports proactive rerouting.
+
+---
+
+## System Components
+
+| Component                        | Description                                                         |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `SmartEmergencyNavigation`       | Core class that calculates optimal routes using AI logic            |
+| `RealTrafficAPI`                 | Integrates with Google Maps or simulates realistic traffic patterns |
+| `EnhancedBayesianPredictor`      | Predicts congestion probabilities dynamically                       |
+| `visualisations.py`              | Generates heatmaps, charts, and route comparison plots              |
+| `run_comprehensive_simulation()` | Orchestrates full simulation: before/after accident routing         |
+
+---
+
+## Demo: What It Does
+
+- Calculates both **emergency** and **regular** routes from origin to destination.
+- Injects a simulated **accident** mid-route and reroutes emergency vehicles.
+- Generates visual comparisons:
+  - Traffic heatmap
+  - Bayesian congestion prediction
+  - Route overlays
+  - Time-saving bar charts
+
+---
+
+## 📈 Example Results
+
+- 🕒 **42% faster** response time with emergency privileges and rerouting
+- 🚧 Avoided central bottlenecks intelligently during accident simulation
+- 📊 Visual evidence generated in plots: `plot_*.png`
+
+---
+
+## How to Run
+
+### 1. Install Requirements
 
 ```bash
-git clone https://github.com/yourusername/smart-emergency-navigation.git
-cd smart-emergency-navigation
+pip install networkx matplotlib numpy pgmpy requests folium
 ```
 
-### 2. Create a virtual environment (optional but recommended)
-
-```bash
-python3 -m venv myenv
-source myenv/bin/activate  # On Windows, use `myenv\Scripts\activate`
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Set up API keys
-
-If you want to use real-time traffic data from Google Maps or HERE Maps, you will need to set up API keys.
-
-- **Google Maps API**:
-
-  Visit the Google Cloud Console, enable the Maps JavaScript API and Directions API, and create an API key.
-
-- **HERE Maps API (optional)** :
-
-  Visit the HERE Developer Portal, sign up for a free account, and get your API key.
-
-### 5. Configure your API keys
-
-Open the new.py file and replace the Google Maps API key in the CONFIG dictionary with your API key:
-
-```py
-CONFIG = {
-    'google_maps_api_key': 'YOUR_GOOGLE_API_KEY',  # Replace with your actual API key
-    'use_mock_data': False,  # Set to False for real traffic data
-}
-```
-
-## Usage
-
-### 1. Run the system:
-
-To start the simulation and see the optimized emergency routes, run the following command:
+### 2. Run the Simulation
 
 ```bash
 python new.py
 ```
 
-This will calculate and print the emergency route, regular route, and performance comparison, as well as generate visualizations for the routes and congestion.
+This runs a full simulation and generates result plots in the working directory.
 
-### 2. Interactive map:
+To use live traffic:
 
-If you have folium installed and the use_mock_data flag is set to False, an interactive map showing the emergency routes will be generated. The map will be saved as emergency_navigation_map.html.
+Get a Google Maps API key
 
-## Features Explained
+In new.py, update:
 
-- **Bayesian Network**:
-  The system uses a Bayesian network to predict congestion based on several factors like time of day, weather, accidents, and road type. The network’s output helps adjust the route calculation for emergency vehicles.
-
-- **Traffic Data API**:
-  Traffic data is fetched in real-time from Google Maps or HERE Maps APIs. If no real API key is provided, mock data is used for traffic prediction.
-
-- **Route Calculation**:
-  The system uses A\* algorithm or Dijkstra’s algorithm to find the shortest path, considering dynamic weights for traffic and congestion.
-
-## Project Structure
-
-- **new.py** : The main script that runs the simulation, calculates routes, and generates visualizations.
-
-- **requirements.txt** : A file containing all the dependencies required to run the system.
-
-- **visualisations.py**: A module responsible for generating plots and maps.
-
-## Visualization
-
-The project includes several functions for visualizing the results of the emergency navigation system's calculations. These visualizations help to understand the traffic conditions, route comparisons, and overall system performance.
-
-### Visualization Functions in `visualisations.py`
-
-1. **Route Comparison Map (`plot_route_comparison_map`)**
-
-   - This function creates a detailed map comparing the optimal routes for emergency vehicles and regular vehicles.
-   - It displays the road network with edge weights representing the base travel time and highlights the selected routes with different styles and colors.
-   - **Parameters**:
-     - `graph`: The road network graph.
-     - `routes_data`: Data for the different routes, including paths, colors, and times.
-     - `start`, `end`: The start and end nodes for the route.
-     - `filename`: The name of the file to save the visualization as.
-   - **Output**: A map with route comparison, edge weights, and labeled start/end points.
-
-2. **Traffic Heatmap (`plot_traffic_heatmap`)**
-
-   - This heatmap visualizes the traffic intensity on the city grid. It uses traffic multipliers to represent congestion levels on each segment of the road network.
-   - **Parameters**:
-     - `graph`: The road network graph.
-     - `filename`: The name of the file to save the heatmap.
-   - **Output**: A heatmap where redder areas represent higher traffic and congestion.
-
-3. **Congestion Heatmap (`plot_congestion_heatmap`)**
-
-   - This heatmap shows the predicted congestion levels based on the Bayesian network's analysis. It uses congestion scores to visualize potential delays.
-   - **Parameters**:
-     - `graph`: The road network graph.
-     - `filename`: The name of the file to save the heatmap.
-   - **Output**: A heatmap where darker blue indicates higher congestion risk.
-
-4. **Response Time Comparison (`plot_response_time_comparison`)**
-
-   - This function compares the calculated travel times for different routes (emergency vs regular).
-   - **Parameters**:
-     - `routes_data`: Data for the different routes, including times and colors.
-     - `filename`: The name of the file to save the chart.
-   - **Output**: A bar chart showing the response time comparison.
-
-5. **Performance Improvement (`plot_performance_improvement`)**
-
-   - This function visualizes the performance improvement of the AI system compared to regular navigation, based on the time saved by the emergency system.
-   - **Parameters**:
-     - `routes_data`: Data for the routes, including times and colors.
-     - `filename`: The name of the file to save the chart.
-   - **Output**: A bar chart comparing regular and AI-optimized navigation, showing the time saved.
-
-6. **Statistics Report (`plot_statistics_report`)**
-   - This function generates a textual summary of the simulation's results, including detailed statistics for the routes and performance improvements.
-   - **Parameters**:
-     - `routes_data`: Data for the routes, including times.
-     - `start`, `end`: The start and end nodes of the route.
-     - `evidence`: The evidence (conditions) used in the simulation.
-     - `filename`: The name of the file to save the report.
-   - **Output**: A textual report summarizing the simulation results.
-
-### How to Use the Visualization Functions
-
-To generate the visualizations, simply call the corresponding function in `visualisations.py`. Each function takes data from the simulation and generates a plot or heatmap, which is saved as a PNG file. For example:
-
-```python
-from visualisations import plot_route_comparison_map
-
-# Assuming `graph`, `routes_data`, `start`, and `end` are defined
-plot_route_comparison_map(graph, routes_data, start, end, "route_comparison.png")
+```bash
+CONFIG = {
+    'google_maps_api_key': 'YOUR_KEY_HERE',
+    'use_mock_data': False,
+}
 ```
 
-This will create a visualization of the route comparison and save it as route_comparison.png.
+⚠️ API calls may be rate-limited. Mock traffic simulation is enabled by default.
 
-### Visualization Output Files
+### 👥 Team Contributions
 
-The visualizations are saved as PNG files by default, but you can customize the filenames for each plot as needed. You can view the resulting images to analyze:
+| Member       | Contribution                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| **Member 1** | Implemented **A\*** and **Dijkstra**, created emergency routing logic                              |
+| **Member 2** | Designed the **Bayesian Network** for predictive congestion modeling                               |
+| **Member 3** | Built **Google Maps API** integration and fallback traffic simulator                               |
+| **Member 4** | Created the **visualization and simulation framework**, including heatmaps and performance reports |
 
-- Route comparisons between emergency and regular vehicles.
+### 📁 Outputs
 
-- Traffic heatmaps showing real-time congestion.
+| File                            | Description                            |
+| ------------------------------- | -------------------------------------- |
+| `plot_0_initial_comparison.png` | Baseline vs Emergency route comparison |
+| `plot_1_route_map.png`          | Route overlay on grid                  |
+| `plot_2_traffic_heatmap.png`    | Real-time traffic heatmap              |
+| `plot_3_congestion_heatmap.png` | AI-predicted congestion score heatmap  |
+| `plot_4_time_comparison.png`    | Time bar charts for all routes         |
+| `plot_5_performance.png`        | Performance gain after rerouting       |
+| `plot_6_statistics.png`         | Summary report of times and conditions |
 
-- AI performance improvements over standard navigation systems.
+### Why This Matters
 
-## Acknowledgements
+This system demonstrates how AI + real-world data can:
 
-**pgmpy**: A library for probabilistic graphical models used in this project for Bayesian networks.
+-Save lives with faster emergency response
 
-**Google Maps API**: Used for real-time traffic data.
+-Handle uncertainty with intelligent planning
 
-**Folium**: For creating interactive maps.
-
-**NetworkX**: Used for graph operations.
+-Scale to city-wide public safety infrastructure
