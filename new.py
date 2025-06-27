@@ -26,7 +26,7 @@ warnings.filterwarnings('ignore')
 # Configuration
 CONFIG = {
     'google_maps_api_key': 'AIzaSyDHJVrDbDje8-R6HsuuaOQhnM5L9ZggZhI', # our actual api key
-    'use_mock_data': False,  # Set to False when you have real API keys; True when you need to use mock-date.
+    'use_mock_data': False,  # Set to False for using real API keys; True for using mock-date.
     'emergency_speed_bonus': 0.7,  # Speed is 1/0.7 = 1.42x faster (base time is 70% of original)
     'traffic_light_priority': 0.8,  # 20% time reduction due to traffic light priority
     'emergency_lane_access': 0.7,  # 30% time reduction due to emergency lane access
@@ -130,13 +130,13 @@ class RealTrafficAPI:
         return base_multiplier * location_factor * event_factor
 
 
-class EnhancedBayesianPredictor:
+class BayesianPredictor:
     """
-    Enhanced Bayesian Network with more realistic traffic prediction
+    Enhanced Bayesian Network with realistic traffic prediction
     """
 
     def __init__(self):
-        # Define the network structure. This was the source of the error.
+        # Define the network structure. 
         self.model = DiscreteBayesianNetwork([
             ('TimeOfDay', 'Congestion'),
             ('Weather', 'Congestion'),
@@ -146,7 +146,7 @@ class EnhancedBayesianPredictor:
             ('Congestion', 'ResponseTime')
         ])
 
-        # More realistic probability distributions
+        # realistic probability distributions
         cpd_time = TabularCPD(
             variable='TimeOfDay', variable_card=3,
             values=[[0.25], [0.5], [0.25]],  # Rush, Normal, Night
@@ -161,7 +161,7 @@ class EnhancedBayesianPredictor:
 
         cpd_accident = TabularCPD(
             variable='Accident', variable_card=2,
-            values=[[0.05], [0.95]],  # More realistic accident probability
+            values=[[0.05], [0.95]],  
             state_names={'Accident': ['Yes', 'No']}
         )
 
@@ -171,7 +171,7 @@ class EnhancedBayesianPredictor:
             state_names={'RoadType': ['Highway', 'Local']}
         )
 
-        # Enhanced congestion model
+        #  congestion model
         cpd_congestion = TabularCPD(
             variable='Congestion', variable_card=3,
             values=[
@@ -254,7 +254,7 @@ class SmartEmergencyNavigation:
         self.route_history = []
 
     def _calculate_dynamic_weight(self, u, v, data, evidence, is_emergency=True):
-        """Calculate optimized weight for a given vehicle type with more dramatic differences"""
+        """Calculate optimized weight for a given vehicle type """
         base_weight = data['base_weight']
         
         # Get real-time traffic from API (or mock)
@@ -445,7 +445,7 @@ def run_comprehensive_simulation():
     
     city_graph = create_realistic_city_graph()
     traffic_api = RealTrafficAPI()
-    bayesian_predictor = EnhancedBayesianPredictor()
+    bayesian_predictor = BayesianPredictor()
     emergency_nav = SmartEmergencyNavigation(city_graph, traffic_api, bayesian_predictor)
     
     start_node = (0, 0)
