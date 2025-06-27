@@ -50,7 +50,7 @@ If you want to use real-time traffic data from Google Maps or HERE Maps, you wil
 
 ### 5. Configure your API keys
 
-Open the new.py file and replace the placeholder Google Maps API key in the CONFIG dictionary with your actual API key:
+Open the new.py file and replace the Google Maps API key in the CONFIG dictionary with your API key:
 
 ```py
 CONFIG = {
@@ -94,7 +94,6 @@ If you have folium installed and the use_mock_data flag is set to False, an inte
 
 - **visualisations.py**: A module responsible for generating plots and maps.
 
-
 ## Visualization
 
 The project includes several functions for visualizing the results of the emergency navigation system's calculations. These visualizations help to understand the traffic conditions, route comparisons, and overall system performance.
@@ -102,6 +101,7 @@ The project includes several functions for visualizing the results of the emerge
 ### Visualization Functions in `visualisations.py`
 
 1. **Route Comparison Map (`plot_route_comparison_map`)**
+
    - This function creates a detailed map comparing the optimal routes for emergency vehicles and regular vehicles.
    - It displays the road network with edge weights representing the base travel time and highlights the selected routes with different styles and colors.
    - **Parameters**:
@@ -112,6 +112,7 @@ The project includes several functions for visualizing the results of the emerge
    - **Output**: A map with route comparison, edge weights, and labeled start/end points.
 
 2. **Traffic Heatmap (`plot_traffic_heatmap`)**
+
    - This heatmap visualizes the traffic intensity on the city grid. It uses traffic multipliers to represent congestion levels on each segment of the road network.
    - **Parameters**:
      - `graph`: The road network graph.
@@ -119,6 +120,7 @@ The project includes several functions for visualizing the results of the emerge
    - **Output**: A heatmap where redder areas represent higher traffic and congestion.
 
 3. **Congestion Heatmap (`plot_congestion_heatmap`)**
+
    - This heatmap shows the predicted congestion levels based on the Bayesian network's analysis. It uses congestion scores to visualize potential delays.
    - **Parameters**:
      - `graph`: The road network graph.
@@ -126,6 +128,7 @@ The project includes several functions for visualizing the results of the emerge
    - **Output**: A heatmap where darker blue indicates higher congestion risk.
 
 4. **Response Time Comparison (`plot_response_time_comparison`)**
+
    - This function compares the calculated travel times for different routes (emergency vs regular).
    - **Parameters**:
      - `routes_data`: Data for the different routes, including times and colors.
@@ -133,6 +136,7 @@ The project includes several functions for visualizing the results of the emerge
    - **Output**: A bar chart showing the response time comparison.
 
 5. **Performance Improvement (`plot_performance_improvement`)**
+
    - This function visualizes the performance improvement of the AI system compared to regular navigation, based on the time saved by the emergency system.
    - **Parameters**:
      - `routes_data`: Data for the routes, including times and colors.
@@ -158,9 +162,11 @@ from visualisations import plot_route_comparison_map
 # Assuming `graph`, `routes_data`, `start`, and `end` are defined
 plot_route_comparison_map(graph, routes_data, start, end, "route_comparison.png")
 ```
+
 This will create a visualization of the route comparison and save it as route_comparison.png.
 
 ### Visualization Output Files
+
 The visualizations are saved as PNG files by default, but you can customize the filenames for each plot as needed. You can view the resulting images to analyze:
 
 - Route comparisons between emergency and regular vehicles.
@@ -168,7 +174,6 @@ The visualizations are saved as PNG files by default, but you can customize the 
 - Traffic heatmaps showing real-time congestion.
 
 - AI performance improvements over standard navigation systems.
-
 
 ## Acknowledgements
 

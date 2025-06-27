@@ -147,28 +147,37 @@ def plot_response_time_comparison(routes_data, filename="plot_4_time_comparison.
 
     save_plot(fig, filename)
 
-
 def plot_performance_improvement(routes_data, filename="plot_5_performance.png"):
     """Creates a bar chart visualizing the performance gain of the emergency system."""
-    if 'Regular Route' not in routes_data:
-        print("Skipping performance plot: Regular route data unavailable.")
+    
+    # Determine which routes to compare for final performance
+    if 'Rerouted Emergency' in routes_data and 'Regular (Post-Accident)' in routes_data:
+        # Compare both routes under accident conditions (fair comparison)
+        emergency_time = routes_data['Rerouted Emergency']['time']
+        regular_time = routes_data['Regular (Post-Accident)']['time']
+        emergency_label = 'AI Emergency System\n(Post-Accident Reroute)'
+        regular_label = 'Regular Navigation\n(Post-Accident)'
+    elif 'Regular Route' in routes_data:
+        # Fallback to original comparison
+        emergency_time = routes_data.get('Rerouted Emergency', routes_data['Emergency Route'])['time']
+        regular_time = routes_data['Regular Route']['time']
+        emergency_label = 'AI Emergency System'
+        regular_label = 'Regular Navigation\n(Baseline)'
+    else:
+        print("Skipping performance plot: Required route data unavailable.")
         return
 
-    # Use the final rerouted time for the most realistic comparison
-    emergency_time = routes_data.get('Rerouted Path', routes_data['Emergency Route'])['time']
-    regular_time = routes_data['Regular Route']['time']
     time_saved = regular_time - emergency_time
-
     if regular_time == 0:
         percentage_saved = 0
     else:
         percentage_saved = (time_saved / regular_time) * 100
 
-    categories = ['Regular Navigation\n(Baseline)', 'AI Emergency System\n(Post-Accident)', 'Time Saved\nby AI System']
+    categories = [regular_label, emergency_label, 'Time Saved\nby AI System']
     values = [regular_time, emergency_time, time_saved]
     colors_bar = ['#d62728', '#1f77b4', '#2ca02c']  # Red, Blue, Green
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))  # Made wider for longer labels
     bars = ax.bar(categories, values, color=colors_bar, alpha=0.9, edgecolor='black', zorder=3)
     ax.bar_label(bars, fmt='%.1f min', fontsize=11, fontweight='bold', padding=3)
 
@@ -176,26 +185,37 @@ def plot_performance_improvement(routes_data, filename="plot_5_performance.png")
     ax.set_title(title, fontsize=18, fontweight='bold')
     ax.set_ylabel("Time (minutes)", fontsize=14)
     ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
-    ax.tick_params(axis='x', labelsize=11)
+    ax.tick_params(axis='x', labelsize=10, rotation=15)  # Rotate labels for better fit
 
-    # A cleaner plot needs less text. The title and labels carry the message.
-    fig.tight_layout()
+    explanation_text = "Fair comparison: Both routes calculated under the same traffic conditions (post-accident)."
+    fig.text(0.5, 0.01, explanation_text, ha='center', fontsize=11, bbox=dict(facecolor='lightblue', alpha=0.6, pad=5))
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
+
     save_plot(fig, filename)
-
 
 def plot_statistics_report(routes_data, start, end, evidence, filename="plot_6_statistics.png"):
     """Creates an image file containing a text-based summary of the simulation run."""
     emergency_time_initial = routes_data['Emergency Route']['time']
-    regular_time = routes_data['Regular Route']['time']
+    regular_time_initial = routes_data['Regular Route']['time']
 
-    final_emergency_time = routes_data.get('Rerouted Path', routes_data['Emergency Route'])['time']
-    time_saved = regular_time - final_emergency_time
-    if regular_time == 0:
-        percentage_saved = 0
+    # Calculate initial advantage
+    initial_time_saved = regular_time_initial - emergency_time_initial
+    initial_percentage_saved = (initial_time_saved / regular_time_initial) * 100 if regular_time_initial > 0 else 0
+
+    # Determine final times for fair comparison
+    if 'Rerouted Emergency' in routes_data and 'Regular (Post-Accident)' in routes_data:
+        final_emergency_time = routes_data['Rerouted Emergency']['time']
+        final_regular_time = routes_data['Regular (Post-Accident)']['time']
+        comparison_note = "(Both under accident conditions)"
     else:
-        percentage_saved = (time_saved / regular_time) * 100
+        final_emergency_time = routes_data.get('Rerouted Emergency', routes_data['Emergency Route'])['time']
+        final_regular_time = regular_time_initial
+        comparison_note = "(Mixed conditions - see note)"
 
-    fig, ax = plt.subplots(figsize=(11, 7))
+    final_time_saved = final_regular_time - final_emergency_time
+    final_percentage_saved = (final_time_saved / final_regular_time) * 100 if final_regular_time > 0 else 0
+
+    fig, ax = plt.subplots(figsize=(12, 9))  # Made larger for more content
     ax.axis('off')
 
     stats_text = f"""
@@ -206,24 +226,78 @@ def plot_statistics_report(routes_data, start, end, evidence, filename="plot_6_s
     - Time of Day: {evidence['TimeOfDay']}, Weather: {evidence['Weather']}
 
     ──────────────────────────────────────────────────────────
-    **ROUTE ANALYSIS**
-    - **Regular Route (Dijkstra):**          {regular_time:.2f} minutes
-    - **Initial Emergency Route (A*):**      {emergency_time_initial:.2f} minutes
+    **INITIAL ROUTE COMPARISON (Pre-Accident)**
+    - **Regular Route (Dijkstra):**          {regular_time_initial:.2f} minutes
+    - **Emergency Route (A*):**              {emergency_time_initial:.2f} minutes
+    - **Initial Advantage:**                 {initial_time_saved:.2f} minutes ({initial_percentage_saved:.1f}% faster)
+
+    ──────────────────────────────────────────────────────────
+    **POST-ACCIDENT ROUTE ANALYSIS**
     """
-    if 'Rerouted Path' in routes_data:
-        stats_text += f"- **Rerouted Emergency Route (A*):**   **{routes_data['Rerouted Path']['time']:.2f} minutes**"
+    
+    if 'Regular (Post-Accident)' in routes_data:
+        stats_text += f"""- **Regular Route (Post-Accident):**     {routes_data['Regular (Post-Accident)']['time']:.2f} minutes
+    - **Emergency Reroute (Post-Accident):** {routes_data['Rerouted Emergency']['time']:.2f} minutes"""
+    else:
+        stats_text += f"""- **Emergency Reroute:**                 {final_emergency_time:.2f} minutes"""
 
     stats_text += f"""
 
     ──────────────────────────────────────────────────────────
-    **PERFORMANCE SUMMARY (AI System vs. Regular)**
-    - Final AI Route Time:   **{final_emergency_time:.2f} minutes**
-    - Time Saved:            **{time_saved:.2f} minutes**
-    - Efficiency Improvement: **{percentage_saved:.1f}% faster**
+    **FINAL PERFORMANCE SUMMARY {comparison_note}**
+    - Final Regular Time:    **{final_regular_time:.2f} minutes**
+    - Final Emergency Time:  **{final_emergency_time:.2f} minutes**
+    - Total Time Saved:      **{final_time_saved:.2f} minutes**
+    - Overall Efficiency:    **{final_percentage_saved:.1f}% faster**
     """
 
-    ax.text(0.02, 0.98, stats_text.replace("    ", ""), transform=ax.transAxes, fontsize=12,
+    if 'Regular (Post-Accident)' not in routes_data:
+        stats_text += f"""
+    
+    **NOTE:** Final comparison uses pre-accident regular time vs post-accident 
+    emergency time. For fair comparison, both should use same conditions."""
+
+    ax.text(0.02, 0.98, stats_text.replace("    ", ""), transform=ax.transAxes, fontsize=11,
             verticalalignment='top', fontfamily='monospace',
             bbox=dict(boxstyle='round,pad=0.8', facecolor='azure', alpha=1))
+
+    save_plot(fig, filename)
+
+
+def plot_initial_route_comparison(routes_data, filename="plot_0_initial_comparison.png"):
+    """Creates a bar chart comparing initial emergency route vs regular route (before accident)."""
+    if 'Regular Route' not in routes_data or 'Emergency Route' not in routes_data:
+        print("Skipping initial comparison plot: Required route data unavailable.")
+        return
+
+    emergency_time = routes_data['Emergency Route']['time']
+    regular_time = routes_data['Regular Route']['time']
+    time_saved = regular_time - emergency_time
+
+    if regular_time == 0:
+        percentage_saved = 0
+    else:
+        percentage_saved = (time_saved / regular_time) * 100
+
+    categories = ['Regular Navigation\n(Standard Route)', 'Emergency Vehicle\n(Initial Route)', 'Time Advantage\n(Emergency Benefits)']
+    values = [regular_time, emergency_time, time_saved]
+    colors_bar = ['#d62728', '#2ca02c', '#ff7f0e']  # Red, Green, Orange
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    bars = ax.bar(categories, values, color=colors_bar, alpha=0.9, edgecolor='black', zorder=3)
+    ax.bar_label(bars, fmt='%.1f min', fontsize=11, fontweight='bold', padding=3)
+
+    title = f'Initial Route Performance: Emergency Vehicle {percentage_saved:.1f}% Faster'
+    ax.set_title(title, fontsize=18, fontweight='bold')
+    ax.set_ylabel("Time (minutes)", fontsize=14)
+    ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
+    ax.tick_params(axis='x', labelsize=11)
+
+    explanation_text = (
+        "Shows the baseline advantage of emergency vehicles before any incidents.\n"
+        "Emergency vehicles benefit from priority signals, emergency lanes, and higher speeds."
+    )
+    fig.text(0.5, 0.01, explanation_text, ha='center', fontsize=11, bbox=dict(facecolor='lightgreen', alpha=0.6, pad=5))
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
 
     save_plot(fig, filename)
