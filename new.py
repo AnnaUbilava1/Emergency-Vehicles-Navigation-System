@@ -25,8 +25,8 @@ warnings.filterwarnings('ignore')
 
 # Configuration
 CONFIG = {
-    'google_maps_api_key': 'AIzaSyDHJVrDbDje8-R6HsuuaOQhnM5L9ZggZhI', # our actual api key
-    'use_mock_data': False,  # Set to False for using real API keys; True for using mock-date.
+    'google_maps_api_key': 'AIzaSyDHJVrDbDje8-R6HsuuaOQhnM5L9ZggZhI', # our actual api key // i know this shouldn't have been pushed, but after the presentation we changed the key 
+    'use_mock_data': False,  # Set to False for using real API keys; True for using mock-data.
     'emergency_speed_bonus': 0.7,  # Speed is 1/0.7 = 1.42x faster (base time is 70% of original)
     'traffic_light_priority': 0.8,  # 20% time reduction due to traffic light priority
     'emergency_lane_access': 0.7,  # 30% time reduction due to emergency lane access
