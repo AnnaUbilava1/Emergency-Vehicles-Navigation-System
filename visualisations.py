@@ -41,7 +41,7 @@ def plot_route_comparison_map(graph, routes_data, start, end, filename="plot_1_r
     ax.set_title("Route Comparison Map with Base Travel Weights", fontsize=18, fontweight='bold')
     ax.set_xlabel("City Grid Coordinate (West -> East)", fontsize=14)
     ax.set_ylabel("City Grid Coordinate (North -> South)", fontsize=14)
-    ax.legend(handles=legend_handles, loc='upper left', fontsize=12, title="Calculated Routes")
+    ax.legend(handles=legend_handles, loc='lower left', fontsize=12, title="Calculated Routes")
 
     explanation_text = (
         "This map shows the city road network and the optimal routes found.\n"
