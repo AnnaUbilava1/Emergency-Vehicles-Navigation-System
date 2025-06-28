@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 import warnings
 
-# Optional, for interactive map. Install with: pip install folium
+# Optional interactive map visualization
 try:
     import folium
     from folium import plugins
@@ -19,15 +19,14 @@ from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
 
-
 from visualisations import *
 warnings.filterwarnings('ignore')
 
-# Configuration
+# System configuration
 CONFIG = {
-    'google_maps_api_key': 'AIzaSyDHJVrDbDje8-R6HsuuaOQhnM5L9ZggZhI', # our actual api key // i know this shouldn't have been pushed, but after the presentation we changed the key 
-    'use_mock_data': False,  # Set to False for using real API keys; True for using mock-data.
-    'emergency_speed_bonus': 0.7,  # Speed is 1/0.7 = 1.42x faster (base time is 70% of original)
+    'google_maps_api_key': 'AIzaSyDHJVrDbDje8-R6HsuuaOQhnM5L9ZggZhI', # i know this shouldn't have been pushed, but after the presentation we changed the key 
+    'use_mock_data': False,  # Set to False for using real API keys
+    'emergency_speed_bonus': 0.7,  #  1.42x faster 
     'traffic_light_priority': 0.8,  # 20% time reduction due to traffic light priority
     'emergency_lane_access': 0.7,  # 30% time reduction due to emergency lane access
 }
@@ -63,10 +62,10 @@ class RealTrafficAPI:
 
             if data['status'] == 'OK':
                 route = data['routes'][0]
-                duration = route['legs'][0]['duration']['value']  # in seconds
+                duration = route['legs'][0]['duration']['value']
                 duration_in_traffic = route['legs'][0].get('duration_in_traffic', {}).get('value', duration)
 
-                # Calculate traffic multiplier
+                # Calculate traffic impact multiplier
                 traffic_multiplier = duration_in_traffic / duration if duration > 0 else 1.0
                 return traffic_multiplier
 
@@ -75,17 +74,15 @@ class RealTrafficAPI:
 
         return None
 
-
     def get_traffic_multiplier(self, edge):
         """Get traffic multiplier with fallback to mock data"""
         cache_key = f"{edge[0]}_{edge[1]}"
 
-        # Check cache first
         if cache_key in self.cache:
             return self.cache[cache_key]
 
         multiplier = None
-        # Try real APIs
+        
         if not CONFIG['use_mock_data']:
             # Convert grid coordinates to approximate lat/lng
             origin_lat = 40.7128 + edge[0][0] * 0.01  # Approximate NYC coordinates
@@ -97,7 +94,8 @@ class RealTrafficAPI:
             multiplier = self.get_google_traffic_data(
                 (origin_lat, origin_lng), (dest_lat, dest_lng)
             )
-        # Fallback to enhanced mock data
+            
+        # Fallback to mock data if API fails or not configured
         if CONFIG['use_mock_data'] or multiplier is None:
             multiplier = self._generate_realistic_traffic_data(edge)
 
@@ -110,33 +108,32 @@ class RealTrafficAPI:
         current_hour = datetime.now().hour
 
         # Time-based traffic patterns
-        if 7 <= current_hour <= 9 or 17 <= current_hour <= 19:
+        if 7 <= current_hour <= 9 or 17 <= current_hour <= 19: #Rush hours
             base_multiplier = np.random.uniform(1.8, 3.5)
         elif 10 <= current_hour <= 16:  # Daytime
             base_multiplier = np.random.uniform(1.2, 2.0)
         else:  # Night/early morning
             base_multiplier = np.random.uniform(1.0, 1.3)
 
-        # Location-based factors (simulate downtown vs suburbs)
+        # Location-based factors (center vs edges) (simulate downtown vs suburbs)
         location_factor = 1.0
-        # Check if either node of the edge is in the center
         is_center = any(abs(node[0] - 3.5) < 1.5 and abs(node[1] - 3.5) < 1.5 for node in edge)
         if is_center:
             location_factor = 1.4
 
-        # Add some randomness for events
-        event_factor = np.random.choice([1.0, 2.5], p=[0.99, 0.01])  # 1% chance of a major event
+        # Random event factor (accidents, construction, etc.)
+        event_factor = np.random.choice([1.0, 2.5], p=[0.99, 0.01])
 
         return base_multiplier * location_factor * event_factor
 
 
 class BayesianPredictor:
     """
-    Enhanced Bayesian Network with realistic traffic prediction
+    Bayesian Network for traffic prediction based on multiple factors
     """
 
     def __init__(self):
-        # Define the network structure. 
+        # Define network structure
         self.model = DiscreteBayesianNetwork([
             ('TimeOfDay', 'Congestion'),
             ('Weather', 'Congestion'),
@@ -146,42 +143,42 @@ class BayesianPredictor:
             ('Congestion', 'ResponseTime')
         ])
 
-        # realistic probability distributions
+        # Define probability distributions
         cpd_time = TabularCPD(
             variable='TimeOfDay', variable_card=3,
-            values=[[0.25], [0.5], [0.25]],  # Rush, Normal, Night
+            values=[[0.25], [0.5], [0.25]],
             state_names={'TimeOfDay': ['Rush', 'Normal', 'Night']}
         )
 
         cpd_weather = TabularCPD(
             variable='Weather', variable_card=2,
-            values=[[0.3], [0.7]],  # Bad, Good
+            values=[[0.3], [0.7]],
             state_names={'Weather': ['Bad', 'Good']}
         )
 
         cpd_accident = TabularCPD(
             variable='Accident', variable_card=2,
-            values=[[0.05], [0.95]],  
+            values=[[0.05], [0.95]],
             state_names={'Accident': ['Yes', 'No']}
         )
 
         cpd_roadtype = TabularCPD(
             variable='RoadType', variable_card=2,
-            values=[[0.4], [0.6]],  # Highway, Local
+            values=[[0.4], [0.6]],
             state_names={'RoadType': ['Highway', 'Local']}
         )
 
-        #  congestion model
+        # Complex congestion model considering all factors
         cpd_congestion = TabularCPD(
             variable='Congestion', variable_card=3,
             values=[
-                # P(High | combinations)
+                # High congestion probabilities
                 [0.8, 0.7, 0.6, 0.5, 0.9, 0.8, 0.7, 0.6, 0.4, 0.3, 0.2, 0.1, 0.5, 0.4, 0.3, 0.2, 0.3, 0.2, 0.1, 0.05,
                  0.4, 0.3, 0.2, 0.1],
-                # P(Medium | combinations)
+                # Medium congestion probabilities
                 [0.15, 0.2, 0.25, 0.3, 0.08, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.3, 0.35, 0.4, 0.45, 0.4, 0.45,
                  0.5, 0.55, 0.3, 0.35, 0.4, 0.45],
-                # P(Low | combinations)
+                # Low congestion probabilities
                 [0.05, 0.1, 0.15, 0.2, 0.02, 0.05, 0.1, 0.15, 0.3, 0.35, 0.4, 0.45, 0.2, 0.25, 0.3, 0.35, 0.3, 0.35,
                  0.4, 0.4, 0.3, 0.35, 0.4, 0.45]
             ],
@@ -196,22 +193,21 @@ class BayesianPredictor:
             }
         )
 
-        # Emergency response time factor
         cpd_emergency = TabularCPD(
             variable='Emergency', variable_card=2,
-            values=[[0.2], [0.8]],  # Emergency, Regular
+            values=[[0.2], [0.8]],
             state_names={'Emergency': ['Yes', 'No']}
         )
 
+        # Response time model based on emergency status and congestion
         cpd_response = TabularCPD(
             variable='ResponseTime', variable_card=3,
             values=[
                 # P(Fast, Normal, Slow | Emergency, Congestion)
-                # Rows: Fast, Normal, Slow
-                # Columns: E=Yes,C=High; E=Yes,C=Med; E=Yes,C=Low; E=No,C=High; E=No,C=Med; E=No,C=Low
-                [0.8, 0.6, 0.4, 0.05, 0.1, 0.2],  # Fast
-                [0.15, 0.3, 0.4, 0.25, 0.3, 0.4],  # Normal
-                [0.05, 0.1, 0.2, 0.7, 0.6, 0.4]  # Slow
+                # Fast, Normal, Slow response times
+                [0.8, 0.6, 0.4, 0.05, 0.1, 0.2],
+                [0.15, 0.3, 0.4, 0.25, 0.3, 0.4],
+                [0.05, 0.1, 0.2, 0.7, 0.6, 0.4]
             ],
             evidence=['Emergency', 'Congestion'],
             evidence_card=[2, 3],
@@ -233,11 +229,10 @@ class BayesianPredictor:
         """Return a congestion score between 0 and 1"""
         query = self.inference.query(variables=['Congestion'], evidence=evidence)
 
-        # Calculate weighted score
         high_prob = query.values[query.state_names['Congestion'].index('High')]
         medium_prob = query.values[query.state_names['Congestion'].index('Medium')]
 
-        # Weighted score (0 = no congestion, 1 = maximum congestion)
+        # Weighted score where 1.0 = maximum congestion, 0 = no congestion
         score = (high_prob * 1.0 + medium_prob * 0.5)
         return score
 
@@ -254,68 +249,65 @@ class SmartEmergencyNavigation:
         self.route_history = []
 
     def _calculate_dynamic_weight(self, u, v, data, evidence, is_emergency=True):
-        """Calculate optimized weight for a given vehicle type """
+        """Calculate optimized weight for emergency vs regular vehicles"""
         base_weight = data['base_weight']
         
-        # Get real-time traffic from API (or mock)
+        # Get real-time traffic multiplier
         traffic_multiplier = self.traffic_api.get_traffic_multiplier((u, v))
     
-        # Get Bayesian prediction
+        # Get Bayesian congestion prediction
         road_type = 'Highway' if data.get('road_type') == 'highway' else 'Local'
         full_evidence = {**evidence, 'RoadType': road_type}
         full_evidence['Emergency'] = 'Yes' if is_emergency else 'No'
         
         congestion_score = self.bayesian_predictor.predict_congestion_score(full_evidence)
         
-        # **NEW: Add accident-specific penalties to create route differentiation**
+        # Add accident-specific penalties to create route differentiation
         accident_penalty = 0
         if evidence.get('Accident') == 'Yes':
-            # Create spatially varying accident impact
-            # Penalize center routes more heavily during accidents
+            # Spatially varying accident impact; heavy/medium penalty for center/near center routes
             center_penalty = 0
             for node in [u, v]:
-                if 2 <= node[0] <= 5 and 2 <= node[1] <= 5:  # Center area
-                    center_penalty += 8.0  # Heavy penalty for center routes
-                elif 1 <= node[0] <= 6 and 1 <= node[1] <= 6:  # Near center
-                    center_penalty += 4.0  # Medium penalty
+                if 2 <= node[0] <= 5 and 2 <= node[1] <= 5:
+                    center_penalty += 8.0
+                elif 1 <= node[0] <= 6 and 1 <= node[1] <= 6:
+                    center_penalty += 4.0
             
             accident_penalty = center_penalty
     
-        # Combine factors to get final weight
+        # Calculate final weight based on vehicle type
         if is_emergency:
-            # Apply emergency vehicle advantages - make them MORE dramatic
+            # Emergency vehicles get significant advantages
             emergency_factor = (
-                CONFIG['emergency_speed_bonus'] * 0.5 *  # Even faster
-                CONFIG['traffic_light_priority'] * 0.6 *  # Better priority
-                CONFIG['emergency_lane_access'] * 0.5     # Much better lane access
+                CONFIG['emergency_speed_bonus'] * 0.5 *
+                CONFIG['traffic_light_priority'] * 0.6 *
+                CONFIG['emergency_lane_access'] * 0.5
             )
         
             # Emergency vehicles can bypass some congestion and accidents
             effective_traffic = 1 + (traffic_multiplier - 1) * emergency_factor
             effective_congestion = congestion_score * emergency_factor * 0.3
-            effective_accident = accident_penalty * 0.2  # Emergency vehicles less affected by accidents
+            effective_accident = accident_penalty * 0.2
         
-            # Calculate final weight
             dynamic_weight = (base_weight * max(0.3, effective_traffic) + 
                              effective_congestion * 3 + effective_accident)
         else:
-            # Regular vehicle calculation - more affected by everything
-            congestion_multiplier = 1 + congestion_score * 2.0  # More dramatic congestion effect
-            accident_multiplier = 1 + (accident_penalty / base_weight) * 0.8  # Significant accident impact
+            # Regular vehicles are more affected by all conditions
+            congestion_multiplier = 1 + congestion_score * 2.0
+            accident_multiplier = 1 + (accident_penalty / base_weight) * 0.8
             
             dynamic_weight = (base_weight * traffic_multiplier * congestion_multiplier * 
                              accident_multiplier + accident_penalty)
     
-        # Store for analysis
+        # Store analysis data
         self.graph[u][v]['dynamic_weight'] = dynamic_weight
         self.graph[u][v]['traffic_multiplier'] = traffic_multiplier
         self.graph[u][v]['congestion_score'] = congestion_score
     
-        return max(0.1, dynamic_weight)  # Ensure positive weight
-
+        return max(0.1, dynamic_weight)
 
     def find_emergency_route(self, start, end, evidence, algorithm='a_star'):
-        """Find optimal emergency route"""
+        """Find optimal emergency route using specified algorithm"""
         print(f"\n🚨 EMERGENCY ROUTE CALCULATION 🚨")
         print(f"From: {start} → To: {end}")
         print(f"Conditions: {evidence}")
@@ -337,7 +329,7 @@ class SmartEmergencyNavigation:
 
         calculation_time = time.time() - start_time
 
-        # Store route information
+        # Store route for analysis
         route_info = {
             'path': path,
             'total_time': total_time,
@@ -358,21 +350,20 @@ class SmartEmergencyNavigation:
         return path, total_time
     
     def find_alternative_route(self, start, end, evidence, avoid_center=True):
-        """Find alternative route that avoids center (for demonstration)"""
+        """Find alternative route that avoids center areas"""
         print(f"\n🔄 FINDING ALTERNATIVE ROUTE...")
 
-         # Temporarily modify weights to discourage center routes
+        # Temporarily modify weights to discourage center routes
         temp_weights = {}
         if avoid_center:
            for u, v, data in self.graph.edges(data=True):
-                # Store original weight
                 temp_weights[(u, v)] = data.get('dynamic_weight', data['base_weight'])
             
                 # Add penalty for center routes
                 center_penalty = 0
                 for node in [u, v]:
                    if 2 <= node[0] <= 5 and 2 <= node[1] <= 5:
-                       center_penalty += 15.0  # Very high penalty
+                       center_penalty += 15.0
             
                 data['temp_weight'] = temp_weights[(u, v)] + center_penalty
        
@@ -394,31 +385,31 @@ class SmartEmergencyNavigation:
 
 
 def create_realistic_city_graph():
-    """Create a more realistic city road network with varied connections"""
+    """Create a realistic city road network with varied connections"""
     G = nx.Graph()
     
-    # Create a 8x8 grid for more complexity
+    # Create 8x8 grid for complexity
     nodes = [(x, y) for x in range(8) for y in range(8)]
     G.add_nodes_from(nodes)
     
-    # Add regular streets with varied weights
+    # Add regular streets with location-based weight variation
     for x in range(8):
         for y in range(8):
             if x < 7:
-                # Vary weights based on location
-                if 2 <= x <= 4 and 2 <= y <= 4:  # Center area - slower
+                # Center area is slower (more congested)
+                if 2 <= x <= 4 and 2 <= y <= 4:
                     weight = np.random.uniform(2.5, 4.5)
                 else:
                     weight = np.random.uniform(1.5, 3.0)
                 G.add_edge((x, y), (x + 1, y), base_weight=weight, distance=1.0, road_type='local')
             if y < 7:
-                if 2 <= x <= 4 and 2 <= y <= 4:  # Center area - slower
+                if 2 <= x <= 4 and 2 <= y <= 4:
                     weight = np.random.uniform(2.5, 4.5)
                 else:
                     weight = np.random.uniform(1.5, 3.0)
                 G.add_edge((x, y), (x, y + 1), base_weight=weight, distance=1.0, road_type='local')
     
-    # Add highways (faster routes) - on edges to encourage different paths
+    # Add highways on edges for alternative fast routes
     for i in [1, 6]:  # Horizontal highways on rows 1 and 6 (edges)
         for j in range(7):
             G.add_edge((j, i), (j + 1, i), base_weight=0.6, distance=1.2, road_type='highway')
@@ -440,7 +431,7 @@ def create_realistic_city_graph():
 
 
 def run_comprehensive_simulation():
-    """Enhanced simulation with better route differentiation"""
+    """Run complete simulation with route analysis"""
     print("🚨 INITIALIZING SMART EMERGENCY NAVIGATION SYSTEM 🚨\n")
     
     city_graph = create_realistic_city_graph()
@@ -451,6 +442,7 @@ def run_comprehensive_simulation():
     start_node = (0, 0)
     end_node = (7, 7)
     
+    # Determine current traffic conditions
     current_hour = datetime.now().hour
     time_condition = 'Rush' if 7 <= current_hour <= 9 or 17 <= current_hour <= 19 else 'Normal'
     initial_evidence = {'TimeOfDay': time_condition, 'Weather': 'Good', 'Accident': 'No'}
@@ -468,7 +460,7 @@ def run_comprehensive_simulation():
         'Regular Route': {'path': regular_path, 'time': regular_time, 'color': '#d62728', 'style': 'dashed', 'width': 3}
     }
     
-    # Print initial comparison results
+    # Print initial results
     initial_time_saved = regular_time - emergency_time
     initial_percentage_improvement = (initial_time_saved / regular_time) * 100 if regular_time > 0 else 0
     print(f"\n📊 INITIAL ROUTE PERFORMANCE (Before Accident)")
@@ -476,12 +468,11 @@ def run_comprehensive_simulation():
     print(f"   - Emergency Route Time:       {emergency_time:.2f} minutes")
     print(f"   - Initial Time Saved:         {initial_time_saved:.2f} minutes ({initial_percentage_improvement:.1f}% improvement)")
     
-    # Simulate accident
+    # Simulate accident scenario
     print(f"\n🚨 SIMULATING MID-ROUTE ACCIDENT...")
     accident_evidence = {**initial_evidence, 'Accident': 'Yes'}
     
-    # **MODIFIED: Calculate different types of routes for better visualization**
-    
+    # Calculate different route types under accident conditions
     # Emergency reroute (with accident conditions)
     reroute_path, reroute_time = emergency_nav.find_emergency_route(start_node, end_node, accident_evidence)
     
@@ -493,11 +484,11 @@ def run_comprehensive_simulation():
     
     analysis_graph = emergency_nav.graph
     
-    # Update routes_data with all different routes
+    # Update routes data with accident scenario results
     routes_data['Rerouted Emergency'] = {'path': reroute_path, 'time': reroute_time, 'color': '#1f77b4', 'style': 'dotted', 'width': 3.5}
     routes_data['Regular (Post-Accident)'] = {'path': regular_accident_path, 'time': regular_accident_time, 'color': '#ff7f0e', 'style': 'dashdot', 'width': 2.5}
     
-    # Add alternative route if it's different
+    # Add alternative route if it's different from others
     if alt_path != reroute_path and alt_path != regular_accident_path:
         routes_data['Alternative Route'] = {'path': alt_path, 'time': alt_time, 'color': '#9467bd', 'style': 'solid', 'width': 2}
     
@@ -509,7 +500,7 @@ def run_comprehensive_simulation():
     if 'Alternative Route' in routes_data:
         print(f"   - Alternative route time: {alt_time:.2f} minutes")
     
-    # Print final analysis
+    # Final performance analysis
     print(f"\n{'=' * 60}")
     print("📊 FINAL PERFORMANCE ANALYSIS")
     time_saved = final_regular_time - final_emergency_time
@@ -521,7 +512,7 @@ def run_comprehensive_simulation():
     print(f"   - Final Emergency Time:       {final_emergency_time:.2f} minutes (rerouted)")
     print(f"   - Time Saved:                 {time_saved:.2f} minutes ({percentage_improvement:.1f}% improvement)")
     
-    # Generate all plots
+    # Generate all visualization plots
     plot_initial_route_comparison(routes_data)
     plot_route_comparison_map(analysis_graph, routes_data, start_node, end_node)
     plot_traffic_heatmap(analysis_graph)
@@ -530,7 +521,7 @@ def run_comprehensive_simulation():
     plot_performance_improvement(routes_data)
     plot_statistics_report(routes_data, start_node, end_node, initial_evidence)
     
-    # Folium map generation
+    # Generate interactive map if folium is available
     if folium:
         create_interactive_map_visualization(routes_data, start_node, end_node)
     else:
@@ -538,7 +529,7 @@ def run_comprehensive_simulation():
 
 
 def create_interactive_map_visualization(routes_data, start, end):
-    """Create an interactive Folium map"""
+    """Create an interactive Folium map visualization"""
 
     # Convert grid coordinates to lat/lng (approximate NYC area)
     def grid_to_latlng(coord):
@@ -551,7 +542,7 @@ def create_interactive_map_visualization(routes_data, start, end):
     center_lng = -74.0060 + 3.5 * 0.005
     m = folium.Map(location=[center_lat, center_lng], zoom_start=14, tiles='CartoDB positron')
 
-    # Add routes
+    # Add route polylines
     for route_name, route_data in routes_data.items():
         path_coords = [grid_to_latlng(coord) for coord in route_data['path']]
         folium.PolyLine(
@@ -575,17 +566,16 @@ def create_interactive_map_visualization(routes_data, start, end):
         icon=folium.Icon(color='red', icon='hospital', prefix='fa')
     ).add_to(m)
 
-    # Add a layer control
     folium.LayerControl().add_to(m)
 
-    # Save map
+    # Save interactive map
     map_filename = 'emergency_navigation_map.html'
     m.save(map_filename)
     print(f"\n🗺️  Interactive map saved as '{map_filename}'")
 
 
 def setup_real_apis():
-    """Instructions for setting up real APIs"""
+    """Display instructions for setting up real traffic APIs"""
     print(f"\n🔧 SETTING UP REAL TRAFFIC APIs")
     print(f"{'=' * 60}")
     print(f"""
@@ -609,7 +599,7 @@ To use real traffic data instead of mock data:
    CONFIG = {{
        'google_maps_api_key': 'YOUR_ACTUAL_GOOGLE_KEY_HERE',
        'here_api_key': 'YOUR_ACTUAL_HERE_KEY_HERE', 
-       'use_mock_data': False,  # <-- Set this to False
+       'use_mock_data': False,
        ...
    }}
 
@@ -633,10 +623,8 @@ if __name__ == '__main__':
     print("=" * 60)
 
     try:
-        # Run main simulation
         run_comprehensive_simulation()
 
-        # Show API setup instructions if using mock data
         if CONFIG['use_mock_data']:
             setup_real_apis()
 
@@ -646,5 +634,4 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"❌ Error during simulation: {e}")
         import traceback
-
         traceback.print_exc()
