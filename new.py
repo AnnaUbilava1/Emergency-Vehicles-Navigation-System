@@ -109,8 +109,8 @@ class RealTrafficAPI:
         """Generate realistic traffic data based on time and location patterns"""
         current_hour = datetime.now().hour
 
-        # Base traffic based on time of day
-        if 7 <= current_hour <= 9 or 17 <= current_hour <= 19:  # Rush hours
+        # Time-based traffic patterns
+        if 7 <= current_hour <= 9 or 17 <= current_hour <= 19:
             base_multiplier = np.random.uniform(1.8, 3.5)
         elif 10 <= current_hour <= 16:  # Daytime
             base_multiplier = np.random.uniform(1.2, 2.0)
